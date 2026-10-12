@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "CIFAR-10 CPU smoke check",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.train",
+      "args": ["--smoke", "--device", "cpu"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "CIFAR-10 full GPU training (wait for free VRAM)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "scripts.train",
+      "args": ["--device", "cuda", "--wait-for-gpu"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal"
+    }
+  ]
+}

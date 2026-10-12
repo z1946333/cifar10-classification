@@ -1,0 +1,16 @@
+{
+  "model": "cifar_resnet18",
+  "epochs": 1,
+  "batch_size": 16,
+  "learning_rate": 0.1,
+  "momentum": 0.9,
+  "weight_decay": 0.0005,
+  "seed": 42,
+  "workers": 0,
+  "amp": true,
+  "smoke": true,
+  "data_dir": "D:\\GitHub\\cifar10-classification\\data",
+  "pretrained": false,
+  "selection_metric": "validation_accuracy",
+  "run_name": "smoke_cuda_verified"
+}

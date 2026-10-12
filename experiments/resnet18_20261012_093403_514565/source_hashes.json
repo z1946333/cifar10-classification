@@ -1,0 +1,16 @@
+{
+  "models/resnet18.py": "89b39f969c76074e0c81fd8e2d63afd952d6942b27e06b83809636c603eed5b5",
+  "models/__init__.py": "6af0f9d4e020e0822aab322e94df03b4803c462bdc61160d417d8a9416678e91",
+  "datasets/cifar10.py": "c8042110fdd96117da9ec61d5119913d86ce651d20fdf9ea27207ca74d0c26b5",
+  "datasets/__init__.py": "5fc7855f6b8de6f1ed077395e596fb48676ab2db89ffbb2be28fa4fe7ecd3c6a",
+  "scripts/evaluate.py": "e60f0314732f21a011d8ec8d5de24714130e7c1cf497b1e5005dcd310da58f9a",
+  "scripts/train.py": "5f8d7ffe78cc2465651b693b836bb74a8335f0fc856115576dc3426d213983d8",
+  "scripts/__init__.py": "800b2e2d7519f019977c52b0846741e962527aed9d728c1e923cf2a145adb840",
+  "tools/download_data.py": "c695860a1ab9bae199e1ae311949d157498aff59ff8a51a2b81031c0d9f50f3a",
+  "tools/download_parallel.py": "ff77e1970b6e2aa9d0ef6c0ca91930b7e31873d1361dbad597c75475cff50307",
+  "tools/launch.py": "6ac4960f949d64947be5a0f2aa7d26bbb6a1a1b3fd96056cb17aeee1e258cbdd",
+  "tools/plot_history.py": "d05c564e453a021770b05741afac18baacf9c4f20f9dcb96d3b2d510a02ef77c",
+  "tools/runtime.py": "6822bc200e965301b642a31c9963811b9e39a6cccf0a2d63c0d60279185ecb9a",
+  "tools/status.py": "e113aed9944f8d574d198261a74264c764bea61f7a284f2d23b2a62be7754c4d",
+  "tools/__init__.py": "bbdad58eb02813e4f30213b94af5d40763792875a24efd052ce9b5f57fcd4fab"
+}
