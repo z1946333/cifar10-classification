@@ -1,108 +1,220 @@
-# CIFAR-10 图像分类实验
+# CIFAR-10 图像分类：ResNet18 实验
 
-使用 PyTorch / torchvision 的 ResNet18 完成 CIFAR-10 十分类。针对 32×32 图像，将第一层改为 3×3、步长 1，并去掉初始最大池化；不使用预训练权重。
+本项目使用 PyTorch 实现 CIFAR-10 图像分类实验，采用针对 32×32 图像调整的 ResNet18，从随机初始化开始训练。项目包含数据划分、模型训练、验证选模、独立测试及结果可视化。
 
-## 新手从这里开始
+**正式实验已完成：训练 30 轮，在官方 10,000 张测试图片上的 Top-1 准确率为 92.89%。** 模型按验证集准确率选择，测试集不参与训练和最佳轮次选择。
 
-本机 Python 环境：`D:\conda_envs\yahui_torch\python.exe`。
+## 1. 实验结果
 
-1. 在 VS Code 打开此项目文件夹，选择以上解释器。
-2. 双击 `RUN_SMOKE.cmd`：小规模 CPU 流程检查，**不是正式实验结果**。
-3. 双击 `START_TRAIN.cmd`：启动后台正式 GPU 训练，若显存不足则排队。重复点击不会启动第二个由此启动器管理的任务。
-4. 双击 `SHOW_STATUS.cmd`：查看正在等待、训练到第几轮、是否完成或报错。
-5. 完成后在 `evaluation/<实验名称>/report.md` 查看报告；`metrics.json` 为原始指标。
+实验编号：`resnet18_20261012_093403_514565`；实验日期：2026-10-12。
 
-训练期间保持电脑开机且不休眠；关闭 VS Code 不会停止后台任务。系统重启会停止任务。程序保存每轮权重，但当前版本没有断点续训；重新启动会建立新实验。
+| 指标 | 结果 |
+|---|---:|
+| 官方测试集 Top-1 准确率 | **92.89%（9,289 / 10,000）** |
+| 测试集平均交叉熵损失 | 0.2351 |
+| 最佳验证集准确率 | 93.76% |
+| 最佳模型所在轮次 | 第 29 轮 |
+| 总训练轮数 | 30 |
+| 训练阶段耗时 | 约 26 分 8 秒 |
 
-状态含义：`waiting_for_gpu` 等待显卡；`loading_data` 准备数据；`training` 训练；`evaluating_best_checkpoint` 最终评估；`completed` 完成；`failed` 失败（查看日志）。进程已退出时，遗留状态不能证明任务仍在运行。
+训练耗时包含每轮验证与结果保存，不含数据下载和最后的测试集评估。以上为 **seed=42 的单次实验结果**，尚未进行多随机种子重复实验。
 
-## 环境
+原始记录：
 
-已使用本机 torch 2.5.0+cu118 / torchvision 0.20.0+cu118。不会修改已有环境。
-换电脑时先创建独立 Python 环境，并按显卡驱动选择 PyTorch 版本。例如 CUDA 11.8：
+- [实验报告](evaluation/resnet18_20261012_093403_514565/report.md)
+- [测试指标及各类别准确率（JSON）](evaluation/resnet18_20261012_093403_514565/metrics.json)
+- [30 轮训练与验证记录（CSV）](experiments/resnet18_20261012_093403_514565/history.csv)
+- [本次运行配置](experiments/resnet18_20261012_093403_514565/config.json)
+- [运行环境记录](experiments/resnet18_20261012_093403_514565/environment.json)
+- [训练/验证样本划分索引](experiments/resnet18_20261012_093403_514565/split_indices.json)
+- [最佳模型权重（约 42.7 MiB，第 29 轮）](checkpoints/resnet18_20261012_093403_514565/best.pt)
 
-```powershell
+### 训练曲线
+
+左图为训练与验证损失，右图为准确率；准确率采用 0～1 的比例表示。
+
+![训练与验证曲线](experiments/resnet18_20261012_093403_514565/curves.png)
+
+### 测试集混淆矩阵
+
+纵轴为真实类别，横轴为预测类别，数值为图片数量。
+
+![官方测试集混淆矩阵](evaluation/resnet18_20261012_093403_514565/confusion_matrix.png)
+
+本次测试中，汽车类别准确率为 97.50%，猫类别为 84.50%。猫、狗之间的混淆较明显：有 64 张猫被预测为狗、78 张狗被预测为猫。完整分类结果见上述指标文件。
+
+## 2. 数据与评估方法
+
+CIFAR-10 包含 10 个类别的 32×32 RGB 图像：飞机、汽车、鸟、猫、鹿、狗、青蛙、马、船、卡车。
+
+| 数据划分 | 图片数量 | 用途 |
+|---|---:|---|
+| 训练集 | 45,000 | 更新模型参数 |
+| 验证集 | 5,000 | 按准确率选择最佳轮次 |
+| 官方测试集 | 10,000 | 对最佳验证模型进行最终评估 |
+
+训练集和验证集由官方 50,000 张训练图片按随机种子 42 打乱后划分，二者不重叠。官方测试集独立保留。
+
+- 训练预处理：随机裁剪至 32×32（padding=4）、随机水平翻转、转为张量、标准化。
+- 验证和测试预处理：转为张量并标准化，不使用随机增强。
+- 标准化均值：`(0.4914, 0.4822, 0.4465)`；标准差：`(0.2470, 0.2435, 0.2616)`。
+- 从官方地址下载数据，并使用 torchvision 提供的 MD5 检查压缩包及数据文件完整性。
+
+## 3. 模型与训练设置
+
+基于 `torchvision.models.resnet18(weights=None, num_classes=10)` 构建模型：
+
+1. 第一层卷积调整为 3×3、步长 1、padding 1。
+2. 将初始最大池化层替换为恒等映射。
+3. 分类头输出 10 个类别的 logits，使用交叉熵损失。
+
+这是公开 ResNet18 的 CIFAR-10 适配实验，不使用 ImageNet 预训练权重，也未提出新的网络结构或损失函数。模型代码见 [models/resnet18.py](models/resnet18.py)。
+
+| 设置 | 数值 |
+|---|---|
+| 优化器 | SGD |
+| 初始学习率 | 0.1 |
+| Momentum | 0.9 |
+| Weight decay | 0.0005 |
+| 学习率调度 | CosineAnnealingLR，T_max=30 |
+| Batch size | 64 |
+| 训练轮数 | 30 |
+| 随机种子 | 42 |
+| 数据加载进程数 | 0 |
+| 混合精度 | CUDA AMP |
+
+默认参数文件：[configs/resnet18.json](configs/resnet18.json)。
+
+## 4. 运行环境
+
+本次实验实际使用：
+
+| 项目 | 配置 |
+|---|---|
+| 操作系统 | Windows |
+| Python | 3.9.25 |
+| PyTorch | 2.5.0+cu118 |
+| torchvision | 0.20.0+cu118 |
+| PyTorch CUDA runtime | 11.8 |
+| GPU | NVIDIA GeForce RTX 3050 Laptop GPU |
+
+固定随机种子并启用 cuDNN 确定性设置，但不同硬件、依赖版本上的结果不保证逐位一致。
+
+## 5. 复现步骤
+
+以下命令在终端执行。请先准备独立 Python 环境；本机已有兼容环境时可以直接使用。
+
+### 获取项目与安装依赖
+
+```bash
+git clone https://github.com/z1946333/cifar10-classification.git
+cd cifar10-classification
+```
+
+CUDA 11.8 环境的安装示例：
+
+```bash
 python -m pip install torch==2.5.0 torchvision==0.20.0 --index-url https://download.pytorch.org/whl/cu118
 python -m pip install -r requirements.txt
 ```
 
-启动器与 VS Code 设置中的 Python 路径只适用于本机。其他电脑修改路径，或直接使用下面的命令。
+无 NVIDIA GPU 时，可在独立环境中将上面的 PyTorch 安装命令替换为：
 
-## 运行命令（项目根目录）
+```bash
+python -m pip install torch==2.5.0 torchvision==0.20.0 --index-url https://download.pytorch.org/whl/cpu
+```
 
-```powershell
-# 下载并验证官方 CIFAR-10，不关闭 HTTPS 证书检查
+然后同样安装 `requirements.txt` 中的依赖。GPU 用户应确保驱动与所选 PyTorch 构建兼容。
+
+### 下载数据
+
+```bash
 python -m tools.download_data
+```
 
-# 官方服务器单连接较慢时，可选择分段下载；请勿同时启动两个下载器
-python -m tools.download_parallel
+数据默认保存到 `data/`。如果单连接下载较慢，可改用 `python -m tools.download_parallel`；不要同时运行两个下载器。
 
-# CPU 小规模检查：128 张训练、64 张验证，1 轮，不评估测试集
+### 训练并自动评估
+
+```bash
+python -m scripts.train --config configs/resnet18.json --device cuda --run-name reproduce_resnet18
+```
+
+程序完成 30 轮训练后，会加载验证准确率最高的模型，自动评估官方测试集并生成报告。CPU 运行时将 `--device cuda` 改成 `--device cpu`。
+
+上述命令的主要输出：
+
+```text
+checkpoints/reproduce_resnet18/best.pt          最佳验证模型
+checkpoints/reproduce_resnet18/last.pt          最后一轮模型
+experiments/reproduce_resnet18/history.csv     每轮训练与验证指标
+experiments/reproduce_resnet18/curves.png       训练曲线
+evaluation/reproduce_resnet18/metrics.json     测试指标
+evaluation/reproduce_resnet18/report.md        实验报告
+```
+
+实验名称已存在时程序会拒绝覆盖；再次运行请换一个 `--run-name`，或省略该参数以使用自动生成的名称。当前版本不支持断点续训。
+
+### 直接复核本次提交的最佳模型
+
+克隆项目、安装依赖并下载数据后，无需重新训练即可执行：
+
+```bash
+python -m scripts.evaluate --checkpoint checkpoints/resnet18_20261012_093403_514565/best.pt --device cuda
+```
+
+该权重对应上表的第 29 轮最佳验证模型。CPU 评估时将 `--device cuda` 改成 `--device cpu`。
+
+### 评估自行训练的权重
+
+完成上述训练后，可执行：
+
+```bash
+python -m scripts.evaluate --checkpoint checkpoints/reproduce_resnet18/best.pt --device cuda
+```
+
+CPU 评估时改用 `--device cpu`。
+
+**Git 仓库包含代码、正式实验的最佳模型、指标、曲线和报告。** CIFAR-10 原始数据需通过下载脚本获取；其他实验权重和本机运行日志不提交。查看已提交的实验结果不需要下载数据或重新训练。
+
+### 流程检查与测试
+
+```bash
+# 使用 128 张训练图片和 64 张验证图片进行 1 轮流程检查
 python -m scripts.train --smoke --device cpu
 
-# 正式 GPU 训练：30 轮，显存不足 1800 MiB 时等待
-python -m scripts.train --device cuda --wait-for-gpu
-
-# CPU 正式训练（速度较慢）
-python -m scripts.train --device cpu
-
-# 重新评估正式训练的最佳权重（将路径替换成实际实验名称）
-python -m scripts.evaluate --checkpoint checkpoints/<实验名称>/best.pt
-
-# 核心测试，不需要下载数据或占用 GPU
+# 数据划分、指标计算、下载校验和启动器等回归测试
 python -m unittest discover -s tests -v
 ```
 
-在 PowerShell 中如果 `python` 指向错误环境，将命令开头的 `python` 换为：
-`& 'D:\conda_envs\yahui_torch\python.exe'`。
+所有 `smoke_` 目录均为小规模流程检查，不属于本文报告的正式测试结果。正式实验以第 1 节列出的实验编号为准。
 
-## 数据与实验设置
-
-- 官方训练集 50000 张，seed=42 固定划分为 45000 训练 / 5000 验证；具体索引会保存。
-- 官方测试集 10000 张，只在训练完成、按验证准确率选出最佳模型后评估。
-- 训练增强：随机裁剪（padding=4）、水平翻转。验证和测试没有随机增强。
-- SGD，初始学习率 0.1，momentum=0.9，weight decay=0.0005，余弦学习率调度。
-- batch=64，workers=0，CUDA AMP；参数保存在 `configs/resnet18.json`。
-- 交叉熵损失；模型直接输出 logits。
-- 原始压缩包与数据文件通过 torchvision 官方 MD5 校验。固定种子不承诺不同设备/版本间逐位一致。
-
-## 目录
+## 6. 项目结构
 
 ```text
-configs/       训练配置
-data/          下载数据，不提交 Git
-datasets/      数据加载代码
-docs/          使用和实验说明
-evaluation/    真实测试指标、混淆矩阵和自动报告
-experiments/   参数、环境、样本划分、每轮 CSV 和曲线
-losses/        损失函数说明
-models/        CIFAR-10 版 ResNet18
-scripts/       训练和测试入口
-tools/         下载、绘图、后台启动和状态查看
-checkpoints/   最佳和最后权重，不提交 Git
-tests/         数据划分、指标计算等回归测试
+cifar10-classification/
+├── configs/         训练配置
+├── data/            下载的数据（不提交 Git）
+├── datasets/        数据读取、增强和划分
+├── docs/            实验与使用说明
+├── evaluation/      测试指标、混淆矩阵和报告
+├── experiments/     配置快照、划分索引、训练记录和曲线
+├── losses/          损失函数说明
+├── models/          ResNet18 模型定义
+├── scripts/         训练与评估入口
+├── tools/           下载、绘图及运行辅助工具
+├── checkpoints/     本次正式实验的最佳模型；其他权重不提交
+├── tests/           回归测试
+├── README.md
+└── requirements.txt
 ```
 
-## 结果
+Windows 本机解释器配置、双击启动和 GitHub Desktop 操作另见 [本机操作指南](docs/local-guide.md)。这些辅助脚本中的绝对路径需要按使用者的电脑修改，通用复现请使用第 5 节命令。
 
-此文档不预填准确率。只有正式运行完成后，`evaluation/latest.json` 才指向可报告的完整测试结果。
-打开对应 `report.md` 查看准确率、训练时间和图表。所有 `smoke_` 目录都是流程检查，不可作为正式实验成绩。
+## 7. 参考资料
 
-## 上传 GitHub
+- [CIFAR-10 官方数据集](https://www.cs.toronto.edu/~kriz/cifar.html)
+- He, K., Zhang, X., Ren, S., & Sun, J. [Deep Residual Learning for Image Recognition](https://arxiv.org/abs/1512.03385), CVPR 2016.
+- [torchvision ResNet18 文档](https://docs.pytorch.org/vision/stable/models/generated/torchvision.models.resnet18.html)
 
-1. GitHub Desktop → File → Add local repository，选择本项目目录（它是独立的本地 Git 仓库）。
-2. 查看 Changes，提交代码和生成的 CSV/JSON/PNG/报告；数据、权重和日志已忽略。
-3. Summary 填写“添加 CIFAR-10 分类实验”，点击 Commit。
-4. Publish repository，名称建议 `cifar10-classification`。根据课程要求选择公开或私有。
-5. 训练完成后，再提交结果并 Push origin。
-6. View on GitHub 打开仓库，复制浏览器地址。私有仓库需要给老师授权。
-
-本程序不会自动上传到 GitHub，也不会停止其他训练进程。
-
-## 参考
-
-- CIFAR-10: https://www.cs.toronto.edu/~kriz/cifar.html
-- torchvision ResNet18: https://docs.pytorch.org/vision/stable/models/generated/torchvision.models.resnet18.html
-- ResNet: https://arxiv.org/abs/1512.03385
-
-模型通过已安装的 torchvision 调用，没有把第三方源码复制到本项目。数据集和依赖的使用须遵守各自适用条款。
+模型通过 torchvision 调用。数据集和依赖遵循各自适用的使用条款与许可证。

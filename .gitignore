@@ -15,3 +15,8 @@ venv/
 /logs/
 /experiments/*/status.json
 .DS_Store
+
+# Preserve the selected checkpoint for the submitted experiment only.
+!/checkpoints/resnet18_20261012_093403_514565/
+/checkpoints/resnet18_20261012_093403_514565/*
+!/checkpoints/resnet18_20261012_093403_514565/best.pt
